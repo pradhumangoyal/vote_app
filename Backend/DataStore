@@ -1,0 +1,63 @@
+Databases: 
+
+
+onlinepollingdb:
+
+***************************************************
+Table name: ElectoralRoll
+
+voterId - PrimaryKey
+name - Not Null
+branch - Not Null
+year - Not Null
+email - Not Null, Unique
+contact - Not Null, Unique
+
+create table ElectoralRoll ( voterId int primary key, name varchar(100) not null, branch varchar(100) not null, year int not null, email varchar(256) not null unique, contact int not null unique)
+
+****************************************************
+
+Table Name: Voter
+
+voterId - Primary key - Foriegn Key to ElectoralRoll.voterId
+electionId - Foreign Key to Elections.electionId , primary key
+otp - Nullable
+
+create Table Voter (voterId int, electionId int, otp int, primary key(voterId, electionid), foreign key (voterId) references ElectoralRoll(voterId), foreign key(electionId) references Elections(electionId));
+
+*****************************************************
+
+Table Name: Elections
+
+electionId - Primary Key
+electionName
+description
+startTime
+endTime
+
+ create Table Elections (electionId int primary key, electionName varchar(1000) not null, description text, startTime datetime not null, endTime datetime not null);
+
+****************************************************
+
+Table Name :Candidate
+
+uId - Primary Key
+electionId - ForeignKey
+voterId - ForeignKey
+name
+manifesto
+
+create table Candidate (uId int primary key auto_increment, electionId int, voterId int, name varchar(100) not null, manifesto text, foreign key (voterId) references ElectoralRoll(voterId), foreign key(electionId) references Elections(electionId))
+
+
+****************************************************
+TableName - Vote
+
+uId - Primary Key , ForeignKey(Candidate.uId)
+electionId - Primary key, foreign key(Elections.db)
+count - Default 0
+
+create table Vote (uId int, electionId int, count int default 0, primary key(uId, electionId), foreign key (uId) references Candidate(uId), foreign key(electionId) references Elections(electionId) )
+
+
+

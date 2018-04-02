@@ -20,20 +20,27 @@ from models.model import pass_param
 pass_param(db)
 
 from models.voter import Voter
+from models.electoralroll import ElectoralRoll
+from models.candidate import Candidate
+from models.elections import Elections
+from models.vote import Vote
 
 
 
 @app.route('/')
 def show_all():
 	example = {}
-	example["Hello"] = "hello"
+	example["OnlinePolling"] = "Welcome To Online Polling Database"
 
 	return jsonify(example)
 
+#*********************Voter Related API*****************************#
+
+#Get all the voters from the electoral roll
 @app.route('/voters', methods=['GET'])
 def getVoters():
 
-	voters = Voter.query.all()
+	voters = ElectoralRoll.query.all()
 	votersInfo = []
 
 	if voters == None:
@@ -44,33 +51,65 @@ def getVoters():
 		voterInfo = {}
 		voterInfo["ACK"] = "Success"
 		voterInfo["voterId"] = voter.voterId
-		voterInfo["electionId"] = voter.electionId
+		voterInfo["name"] = voter.name
+		voterInfo["branch"] = voter.branch
+		voterInfo["year"] = voter.year
+		voterInfo["email"] = voter.email
+		voterInfo["contact"] = voter.contact
 
 		votersInfo.append(voterInfo)
 
 	return jsonify(votersInfo)
 
-
+#Add A voter to electoral roll
 @app.route('/create/voter', methods=['POST'])
 def create_voter():
-	data = request.get_json()
-	print("request: ")
-	print(request)
-	try:
-		print("Reached")
-		voterId = data['id']
-		eId = data['electionId']
+	singleVoter = request.get_json()
 
-		voter = Voter(voterId, eId)
-		db.session.add(voter)
-		db.session.commit()
-
-		return jsonify({'ACK': 'SUCCESS'})
-	except:
+	if singleVoter == None:
 		return jsonify({'ACK': 'FAILED'})
+	
+	try:	
+		voterId = singleVoter["voterId"]
+		name = singleVoter["name"]
+		branch = singleVoter["branch"]
+		year = singleVoter["year"]
+		email = singleVoter["email"]
+		contact = singleVoter["contact"]
+	except KeyError as e:
+		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+
+	electoralRoll = ElectoralRoll( voterId=voterId,
+		name=name,
+		branch=branch,
+		year=year,
+		email=email,
+		contact=contact)
+
+	curr_session = db.session
+	success = False
+
+	try:
+		curr_session.add(electoralRoll)
+		curr_session.commit()
+		success = True
+	except Exception as err:
+		print(err)
+		curr_session.roll_back()
+		curr_session.flush()
+
+	if success:
+		return jsonify({'ACK': 'Success'})
+	return jsonify({'ACK': 'FAILED'})
+
+#**********Authenticate a Voter*******#
+
+@app.route('/auth/<int: otp>', methods=['POST'])
+def check_auth():
+	
 
 
 if __name__ == '__main__':
 	db.create_all()
-	app.run(debug=False, host="0.0.0.0", port=8080, threaded=True)
+	app.run(debug=False, host="172.31.71.98", port=8080, threaded=True)
 
