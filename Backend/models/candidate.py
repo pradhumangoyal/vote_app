@@ -16,10 +16,9 @@ class Candidate(db.Model):
 
 
 	def __repr__(self):
-		return 'Candidate: < ' + self.electionId + ':' + self.uId + ':' + self.voterId + ':' + self.name + ':' + self.manifesto + '>'
+		return 'Candidate: < ' + str(self.electionId) + ':' + str(self.uId) + ':' + str(self.voterId) + ':' + self.name + ':' + self.manifesto + '>'
 		
-	def __init__(self,uId, electionId, voterId, name, manifesto):
-		self.uId = uId
+	def __init__(self, electionId, voterId, name, manifesto):
 		self.voterId = voterId
 		self.name = name
 		self.manifesto = manifesto
@@ -27,4 +26,16 @@ class Candidate(db.Model):
 
 	def as_dict(self):
 		return { c.name : getattr(self, c.name) for c in self.__tablename__.columns}
+
+	def get_uId(self):
+		return self.uId
+
+	def get_voterId(self):
+		return self.voterId
+
+	def get_name(self):
+		return self.name
+
+	def get_manifesto(self):
+		return self.manifesto
 		

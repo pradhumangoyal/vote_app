@@ -1,5 +1,4 @@
 from models.model import db
-
 class Vote(db.Model):
 
 	'''
@@ -15,7 +14,7 @@ class Vote(db.Model):
 
 	def __repr__(self):
 		return 'Vote: < ' + self.electionId + ':' + self.uId + ':' + self.count + '>'
-		
+
 	def __init__(self, uId, electionId, count):
 		self.uId = uId
 		self.electionId = electionId

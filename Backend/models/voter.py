@@ -9,7 +9,7 @@ class Voter(db.Model):
 	__tablename__ = 'Voter'
 
 	voterId = db.Column(db.Integer,db.ForeignKey('ElectoralRoll.voterId'), nullable=False, primary_key=True )
-	electionId = db.Column(db.Integer,db.ForeignKey('Elections.electionId'), nullable=False)
+	electionId = db.Column(db.Integer,db.ForeignKey('Elections.electionId'), nullable=False, primary_key=True)
 	otp = db.Column(db.Integer, nullable=True)
 
 	def __repr__(self):

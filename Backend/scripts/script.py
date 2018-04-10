@@ -67,10 +67,9 @@ for rownumber in range(1, sheet.nrows):
   		"contact": str(contact),
   		"branch": branch,
   		"year": year,
-  		"name": name
-
-  	})
-  print(r.json())
+  		"name": name}, headers={"authKey": "pdh"})
+  
+  print(r)
 
   time.sleep(0.03)
 

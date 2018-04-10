@@ -8,20 +8,28 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from flask_mail import Mail,  Message
+from email.message import EmailMessage
+from mailjet_rest import Client
+import os
 
+api_key =  "08654429a1ccf308410d2f91df61713e"
+api_secret = "6f82ebe2371ab441fbb694f8bca67708"
+mailjet = Client(auth=(api_key, api_secret), version='v3.1')
 
+#mailjet.sender.create(data={'email': 'onlinepollingsys@gmail.com'})
 
 # set the project root directory as the static folder, you can set others.
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://onlinepolling:password@localhost/onlinepollingdb'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAIL_SERVER']='smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USERNAME'] = 'onlinepollingsys@gmail.com'
-app.config['MAIL_PASSWORD'] = 'onlinepollingsystem'
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
+# app.config['MAIL_SERVER']='smtp.gmail.com'
+# app.config['MAIL_PORT'] = 465
+# app.config['MAIL_USERNAME'] = 'onlinepollingsys@gmail.com'
+# app.config['MAIL_PASSWORD'] = 'onlinepollingsystem'
+# app.config['MAIL_USE_TLS'] = False
+# app.config['MAIL_USE_SSL'] = True
+# app.config['Debug'] = True
 
 db = SQLAlchemy(app)
 
@@ -69,12 +77,40 @@ def check_valid_hostId(hostId):
 	return True
 
 def send_email(electionId, voterId, otp):
-    fromaddr = 'onlinepollingsys@gmail.com'
+    fromaddr = "onilnepollingsys@gmail.com"
     toaddrs = db.session.query(ElectoralRoll.email).filter_by(voterId = voterId).first()
     username = 'onlinepollingsys@gmail.com'
-    password = 'onlinepollingsystem'
+    password = "onlinepollingsystem"
     message = "OTP for election with id = " + str(electionId) +" is = " + str(otp)
     subject = 'Onlinepollingsystem : OTP'
+
+    toaddrs = toaddrs[0]
+
+    result = mailjet.contact.create(data={'email': toaddrs})
+
+    email = {
+    'Messages': [
+	    {
+			"From": {
+				"Email": fromaddr,
+				"Name": "Onlinepollingsystem"
+			},
+			"To": [
+				{
+					"Email": toaddrs,
+					"Name": "OTP: "
+				}
+			],
+			"Subject": subject,
+			"TextPart": message,
+			"HTMLPart": "OTP for election with id = " + str(electionId) +" is = " + str(otp)
+		}
+	]
+}
+
+    res = mailjet.send.create(email)
+    
+    print(res.json())
 
     # server = smtplib.SMTP_SSL('smtp.gmail.com',587)
     # server.login(username,password)
@@ -82,11 +118,22 @@ def send_email(electionId, voterId, otp):
     # 	fromaddr,toaddrs,message
     # 	)
     # server.quit()
-    print('Sending mail')
-    msg = Message(subject, sender = fromaddr, recipients = [toaddrs])
-    msg.body = message
-    print('Progress started')
-    mail.send(msg)
+    # print('Sending mail')
+    # msg = Message(subject, sender = fromaddr, recipients = [toaddrs])
+    # msg.body = message
+    # print('Progress started')
+    # mail.send(msg)
+    # msg = EmailMessage()
+    # msg.set_content(message)
+    # msg['Subject'] = subject
+    # msg['From'] = fromaddr
+    # msg['To'] = toaddrs
+    # print('Generating SMTP')
+    # s = smtplib.SMTP('smtp.gmail.com:587')
+    # print('SMTP generated')
+    # s.send_message(msg)
+    # s.quit()
+
 
 #*****************************************************#
 
@@ -182,7 +229,7 @@ def create_voter():
 #**********Authenticate a Voter*******#
 
 @app.route('/auth', methods=['POST'])
-def check_auth(otp):
+def check_auth():
 	try:
 		if request.headers['authKey'] != "pdh":
 			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
@@ -195,15 +242,16 @@ def check_auth(otp):
 		return jsonify({'ACK': 'FAILED'})
 
 	otp = data["otp"]
-	electionId = data["electionid"]
+	electionId = data["electionId"]
 	voterId = data["voterId"]
 
-	sql = text('select otp from Voter where electionId = :electionId AND voterId = :voterId', {'electionId': electionId, 'voterId': voterId})
-	result = db.engine.execute(sql)
+	result = db.session.query(Voter.otp).filter_by(electionId=electionId,voterId=voterId).first()
+
+	result = result[0]
 
 	print("result otp ==> " + str(result))
 
-	if result is not otp:
+	if result != otp:
 		return jsonify({ 'Authenticate' : 'Failed'})
 	return jsonify({'Authenticate' : 'Pass'})
 
@@ -325,10 +373,169 @@ def create_election():
 		return jsonify({'ACK': 'Success'})
 	return jsonify({'ACK': 'FAILED'})
 
+#********Cast vote and get results***********#
+@app.route('/castvote', methods=['POST'])
+def cast_vote():
+	try:
+		if request.headers['authKey'] != "pdh":
+			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	except Exception as e:
+		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
+	data = request.get_json()
+
+	if data == None:
+		return jsonify({'ACK': 'FAILED'})
+
+	curr_session = db.session
+	success = False
+
+	try:
+		uId = data['uId']
+		electionId = data['electionId']
+		vote = Vote.query.filter_by(uId=uId,electionId=electionId)
+		x = vote[0].count
+		vote[0].count = x + 1
+		result = db.engine.execute("delete from Voter where electionId="+str(electionId)+",name="+str(courseId))	
+		curr_session.commit()
+		success = True
+	except Exception as err:
+		print(err)
+		curr_session.roll_back()
+		curr_session.flush().result()
+
+	if success:
+		return jsonify({'ACK': 'Success'})
+	return jsonify({'ACK': 'FAILED'})
+
+#********Register as a candidate*******#
+@app.route('/register/candidate',methods=['POST'])
+def reg_candidate():
+	try:
+		if request.headers['authKey'] != "pdh":
+			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	except Exception as e:
+		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+
+	data = request.get_json()
+	if data == None:
+		return jsonify({'ACK': 'FAILED'})
+
+	try:
+		voterId = data["voterId"]
+		electionId = data["electionId"]
+		name = data["name"]
+		manifesto = data["manifesto"]
+	except KeyError as e:
+		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+
+	candidate = Candidate(voterId=voterId,electionId=electionId,name=name,manifesto=manifesto)
+
+	curr_session = db.session
+	success = False
+
+	try:
+		curr_session.add(candidate)
+		curr_session.commit()
+		print(candidate)
+		uId = candidate.uId
+		print(uId)
+		result = db.engine.execute("INSERT INTO Vote (uId,electionId,count) VALUES (" + str(uId) + "," + str(electionId) + ", 0)") 
+		success = True
+	except Exception as err:
+		print(err)
+		curr_session.roll_back()
+		curr_session.flush()
+
+	if success:
+		return jsonify({'ACK': 'Success'})
+	return jsonify({'ACK': 'FAILED'})
+
+#***********Get the results********#
+@app.route('/getresults/', methods=['GET', 'POST'])
+def fetch_results():
+
+	try:
+		if request.headers['authKey'] != "pdh":
+			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	except Exception as e:
+		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+
+	data = request.get_json()
+	if data == None:
+		return jsonify({'ACK': 'FAILED'})
+
+	try:
+		electionId = data["electionId"]
+	except KeyError as e:
+		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+
+	
+	try:
+		results = db.engine.execute("SELECT * FROM Vote where electionId="+str(electionId)).fetchall()
+		print("results == > " )
+		print(results)
+		ret = []
+
+		for result in results:
+			add = {}
+			count = result.count
+			uId = result.uId
+			add["count"] = count
+			add["uId"] = uId
+			add["ACK"] = "Success"
+			print("Reached Before query")
+			candidate = db.engine.execute("SELECT * FROM Candidate where electionId="+str(electionId)).fetchone()
+			print("Candidate == >")
+			print(candidate)
+			print("Reached After query")
+			add["voterId"] = candidate[2]
+			print("Reached Before query")
+			add["manifesto"] = candidate[4]
+			add["name"] = candidate[3]
+			ret.append(add)
+			print("Here")
+
+		return jsonify(ret)
+	except Exception as e:
+		return jsonify({'ACK': 'FAILED'})
+
+#**********Get list of elections***********#
+@app.route('/list/elections', methods=['GET', 'POST'])
+def get_listAll():
+	try:
+		if request.headers['authKey'] != "pdh":
+			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	except Exception as e:
+		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+
+	try:
+		#lists = db.session.query(Elections).order_by(Elections.electionId)
+		print("Reached here")
+		lists = db.engine.execute("SELECT * FROM Elections order by electionId").fetchall()
+		print("lists ==> ")
+		print(lists)
+
+		ret=[]
+		for election in lists:
+			print("Start")
+			add = {}
+			print("Election == >")
+			print(election[0])
+			add["electionId"] = election[0]
+			add["name"] = election[2]
+			add["ACK"] = "Success"
+			print("here")
+			ret.append(add)
+			print("Done")
+		print(ret)
+
+		return jsonify(ret)
+		print("Here")
+	except Exception as e:
+		return jsonify({'ACK': 'FAILED'})
 
 
 if __name__ == '__main__':
 	db.create_all()
-	app.run(debug=True, host="0.0.0.0", port=8080, threaded=True)
-
+	app.run(debug=False, host="0.0.0.0", port=8080, threaded=True)
