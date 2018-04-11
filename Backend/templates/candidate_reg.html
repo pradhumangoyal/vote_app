@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<title>Online Polling System</title>
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <style>
+  .head{
+    font-size: 35px;
+    background-color: #1aa3ff;
+    color: white;
+    border: 3px solid black;
+  }
+
+       /* Bordered form */
+form {
+    border: 3px solid black;
+    margin: 10px,10px,10px,10px;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 15px;
+}
+
+/* Full-width inputs */
+input[type=text], input[type=password] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+/* Set a style for all buttons */
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+/* Add a hover effect for buttons */
+button:hover {
+    opacity: 0.8;
+}
+
+/* Extra style for the cancel button (red) */
+.cancelbtn {
+    width: auto;
+    padding: 10px 18px;
+    background-color: #f44336;
+}
+
+/* Add padding to containers */
+.container {
+    padding: 16px;
+}
+
+/* Change styles for span and cancel button on extra small screens */
+@media screen and (max-width: 300px) {
+    span.psw {
+        display: block;
+        float: none;
+    }
+    .cancelbtn {
+        width: 100%;
+    }
+}
+.link{
+  color: white;
+}
+
+.link:hover{
+  color: black;
+}
+  </style>
+</head>
+
+<body>
+  <div class="well well-lg head">CANDIDATE REGISTRATION FORM</div>
+
+  <!--login form-->
+  <form name="cand_reg" action="http://172.31.74.11:8000/register/candidate" method="POST">
+  
+  <div class="container">
+    <label for="voterId"><b>Voter ID</b></label>
+    <input type="text" placeholder="Enter Voter ID" name="voterId" required>
+
+    <label for="name"><b>Name</b></label>
+    <input type="text" placeholder="Enter your name" name="name" required>
+    <br>
+
+    <label for="manifesto"><b>Manifesto</b></label>
+    <br>
+    <textarea placeholder="Enter your manifesto details" name="manifesto" cols="60" maxlength="500" size="3" required wrap="hard">
+      
+    </textarea>
+    <br>
+
+    <label for="electionId"><b>Election ID</b></label>
+    <input type="text" placeholder="Enter Election ID" name="electionId" required>
+
+    <!--<label for="elct"><b>Election ID</b></label>
+    <select placeholder="Select an Election ID" name="elct" required>
+      <option></option>
+    </select>-->
+
+    <button type="submit"><a href="" class="link"> Login</a></button>
+    <!--<label>
+      <input type="checkbox" checked="checked" name="remember"> Remember me
+    </label>-->
+  </div>
+
+  <div class="container" style="background-color:#f1f1f1">
+    <button type="button" class="cancelbtn"><a href="frontpage.html" class="link">Cancel</a></button>
+  </div>
+</form>
+  
+</body>
+</html>

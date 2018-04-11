@@ -1,5 +1,5 @@
 import string
-from flask import Flask, request, jsonify, send_from_directory, send_file
+from flask import Flask, request, jsonify, send_from_directory, send_file, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import json
@@ -138,12 +138,9 @@ def send_email(electionId, voterId, otp):
 #*****************************************************#
 
 @app.route('/')
-def show_all():
-	example = {}
-	example["OnlinePolling"] = "Welcome To Online Polling Database"
-
-	return jsonify(example)
-
+def main_page():
+	return render_template("/frontpage.html")
+	
 #*********************Voter Related API*****************************#
 
 #Get all the voters from the electoral roll
@@ -151,11 +148,11 @@ def show_all():
 def getVoters():
 
 
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+	# try:
+	# 	if request.headers['authKey'] != "pdh":
+	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	# except Exception as e:
+	# 	return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
 	voters = ElectoralRoll.query.all()
 	votersInfo = []
@@ -182,11 +179,11 @@ def getVoters():
 @app.route('/create/voter', methods=['POST'])
 def create_voter():
     
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+	# try:
+	# 	if request.headers['authKey'] != "pdh":
+	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	# except Exception as e:
+	# 	return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
 	singleVoter = request.get_json()
 
@@ -228,42 +225,34 @@ def create_voter():
 
 #**********Authenticate a Voter*******#
 
-@app.route('/auth', methods=['POST'])
+@app.route('/auth', methods=['GET','POST'])
 def check_auth():
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+	if request.method == 'POST':
+		otp = int(request.form["otp"].strip())
+		electionId = int(request.form["electionId"].strip())
+		voterId = int(request.form["voterId"].strip())
 
-	data = request.get_json()
+		result = db.session.query(Voter.otp).filter_by(electionId=electionId,voterId=voterId).first()
 
-	if data == None:
-		return jsonify({'ACK': 'FAILED'})
+		result = result[0]
 
-	otp = data["otp"]
-	electionId = data["electionId"]
-	voterId = data["voterId"]
+		print("result otp ==> " + str(result))
 
-	result = db.session.query(Voter.otp).filter_by(electionId=electionId,voterId=voterId).first()
+		if result != otp:
+			return render_template("/frontpage.html")
+		return render_template("/cast_vote.html", electionId=electionId,otp=otp,voterId=voterId)
 
-	result = result[0]
-
-	print("result otp ==> " + str(result))
-
-	if result != otp:
-		return jsonify({ 'Authenticate' : 'Failed'})
-	return jsonify({'Authenticate' : 'Pass'})
+	return render_template("/voter_login.html")
 
 #***********Create a Elegible voter List and send Emails with otp for a particular electionId************#
 
 @app.route('/create/listvoters/<electionId>', methods=['POST'])
 def create_eligible_list(electionId):
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'Not auth', 'Message' : 'Missing ' + e.args[0]})
+	# try:
+	# 	if request.headers['authKey'] != "pdh":
+	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	# except Exception as e:
+	# 	return jsonify({'ACK' : 'Not auth', 'Message' : 'Missing ' + e.args[0]})
 
 	data = request.get_json()
 
@@ -326,140 +315,118 @@ def create_eligible_list(electionId):
 #***********Create Elections************#
 @app.route('/create/election', methods=['GET','POST'])
 def create_election():
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
-	data = request.get_json()
+	if request.method == 'POST':
+		try:
+			electionName = request.form["electionName"].strip()
+			description = request.form["description"].strip()
+			startTime = request.form["startTime"].strip().replace('T', ' ')
+			endTime = request.form["endTime"].strip().replace('T',' ')
+			hostId = int(request.form["hostId"].strip())
 
-	if data == None:
+
+
+			if not check_valid_hostId(hostId):
+				raise KeyError('Invalid hostId')
+
+		except KeyError as e:
+			return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+
+		electionId = gen_electionId()
+		print("electionId ==> " + str(electionId) + "hostId ==> " + str(hostId) )
+		election = Elections(hostId =hostId,electionId = electionId, electionName=electionName,startTime=startTime,endTime=endTime,description=description)
+
+		curr_session = db.session
+		success = False
+
+		try:
+			curr_session.add(election)
+			curr_session.commit()
+			success = True
+		except Exception as err:
+			print(err)
+			curr_session.roll_back()
+			curr_session.flush()
+
+		if success:
+			return jsonify({'ACK': 'Success'})
 		return jsonify({'ACK': 'FAILED'})
 
-
-	try:
-		electionName = data["electionName"]
-		description = data["description"]
-		startTime = data["startTime"]
-		endTime = data["endTime"]
-		hostId = data["hostId"]
-
-
-
-		if not check_valid_hostId(hostId):
-			raise KeyError('Invalid hostId')
-
-	except KeyError as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
-
-	electionId = gen_electionId()
-	print("electionId ==> " + str(electionId) + "hostId ==> " + str(hostId) )
-	election = Elections(hostId =hostId,electionId = electionId, electionName=electionName,startTime=startTime,endTime=endTime,description=description)
-
-	curr_session = db.session
-	success = False
-
-	try:
-		curr_session.add(election)
-		curr_session.commit()
-		success = True
-	except Exception as err:
-		print(err)
-		curr_session.roll_back()
-		curr_session.flush()
-
-	if success:
-		return jsonify({'ACK': 'Success'})
-	return jsonify({'ACK': 'FAILED'})
+	return render_template("/host_election.html")
 
 #********Cast vote and get results***********#
-@app.route('/castvote', methods=['POST'])
+@app.route('/castvote', methods=['GET','POST'])
 def cast_vote():
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
-	data = request.get_json()
+	if request.method == 'POST':
 
-	if data == None:
+		curr_session = db.session
+		success = False
+
+		try:
+			uId = int(request.form['uId'].strip())
+			electionId = int(request.form['electionId'].strip())
+			vote = Vote.query.filter_by(uId=uId,electionId=electionId)
+			x = vote[0].count
+			vote[0].count = x + 1
+			result = db.engine.execute("delete from Voter where electionId="+str(electionId)+",name="+str(courseId))	
+			curr_session.commit()
+			success = True
+		except Exception as err:
+			print(err)
+
+		if success:
+			return jsonify({'ACK': 'Success'})
 		return jsonify({'ACK': 'FAILED'})
-
-	curr_session = db.session
-	success = False
-
-	try:
-		uId = data['uId']
-		electionId = data['electionId']
-		vote = Vote.query.filter_by(uId=uId,electionId=electionId)
-		x = vote[0].count
-		vote[0].count = x + 1
-		result = db.engine.execute("delete from Voter where electionId="+str(electionId)+",name="+str(courseId))	
-		curr_session.commit()
-		success = True
-	except Exception as err:
-		print(err)
-		curr_session.roll_back()
-		curr_session.flush().result()
-
-	if success:
-		return jsonify({'ACK': 'Success'})
-	return jsonify({'ACK': 'FAILED'})
 
 #********Register as a candidate*******#
-@app.route('/register/candidate',methods=['POST'])
+@app.route('/register/candidate',methods=['GET','POST'])
 def reg_candidate():
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
-	data = request.get_json()
-	if data == None:
+	if request.method == 'POST':		
+		try:
+			voterId = int(request.form["voterId"].strip())
+			electionId = int(request.form["electionId"].strip())
+			name = request.form["name"].strip()
+			manifesto = request.form["manifesto"].strip()
+			if not check_valid_hostId(voterId):
+				raise KeyError('Invalid hostId')
+
+		except KeyError as e:
+			return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+
+		candidate = Candidate(voterId=voterId,electionId=electionId,name=name,manifesto=manifesto)
+
+		curr_session = db.session
+		success = False
+
+		try:
+			curr_session.add(candidate)
+			curr_session.commit()
+			print(candidate)
+			uId = candidate.uId
+			print(uId)
+			result = db.engine.execute("INSERT INTO Vote (uId,electionId,count) VALUES (" + str(uId) + "," + str(electionId) + ", 0)") 
+			success = True
+		except Exception as err:
+			print(err)
+			
+
+		if success:
+			return jsonify({'ACK': 'Success'})
 		return jsonify({'ACK': 'FAILED'})
 
-	try:
-		voterId = data["voterId"]
-		electionId = data["electionId"]
-		name = data["name"]
-		manifesto = data["manifesto"]
-	except KeyError as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
-
-	candidate = Candidate(voterId=voterId,electionId=electionId,name=name,manifesto=manifesto)
-
-	curr_session = db.session
-	success = False
-
-	try:
-		curr_session.add(candidate)
-		curr_session.commit()
-		print(candidate)
-		uId = candidate.uId
-		print(uId)
-		result = db.engine.execute("INSERT INTO Vote (uId,electionId,count) VALUES (" + str(uId) + "," + str(electionId) + ", 0)") 
-		success = True
-	except Exception as err:
-		print(err)
-		curr_session.roll_back()
-		curr_session.flush()
-
-	if success:
-		return jsonify({'ACK': 'Success'})
-	return jsonify({'ACK': 'FAILED'})
+	return render_template("/candidate_reg.html")
 
 #***********Get the results********#
 @app.route('/getresults/', methods=['GET', 'POST'])
 def fetch_results():
 
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+	# try:
+	# 	if request.headers['authKey'] != "pdh":
+	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	# except Exception as e:
+	# 	return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
 	data = request.get_json()
 	if data == None:
@@ -503,11 +470,11 @@ def fetch_results():
 #**********Get list of elections***********#
 @app.route('/list/elections', methods=['GET', 'POST'])
 def get_listAll():
-	try:
-		if request.headers['authKey'] != "pdh":
-			return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+	# try:
+	# 	if request.headers['authKey'] != "pdh":
+	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
+	# except Exception as e:
+	# 	return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
 	try:
 		#lists = db.session.query(Elections).order_by(Elections.electionId)
@@ -536,6 +503,7 @@ def get_listAll():
 		return jsonify({'ACK': 'FAILED'})
 
 
+
 if __name__ == '__main__':
 	db.create_all()
-	app.run(debug=False, host="0.0.0.0", port=8080, threaded=True)
+	app.run(debug=False, host="172.31.74.11", port=8000, threaded=True)

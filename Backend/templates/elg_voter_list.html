@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<title>Online Polling System</title>
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <style>
+    .head{
+    font-size: 35px;
+    background-color: #1aa3ff;
+    color: white;
+    border: 3px solid black;
+  }
+  button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+/* Add a hover effect for buttons */
+button:hover {
+    opacity: 0.8;
+}
+
+/* Extra style for the cancel button (red) */
+.slctall {
+    width: auto;
+    padding: 10px 18px;
+    background-color:#4CAF50;
+    color: white;
+}
+.link{
+  color: white;
+}
+
+.link:hover{
+  color: black;
+}
+  </style>
+
+  <script>
+    /*for filter*/
+    $(document).ready(function(){
+  $("#myInput").on("keyup", function() {
+    var value = $(this).val().toLowerCase();
+    $("#myTable tr").filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+    });
+  });
+});
+
+  /*for select all*/
+    $(document).ready(function () {
+  $('body').on('click', '#selectAll', function () {
+    if ($(this).hasClass('allChecked')) {
+        $('input[type="checkbox"]', '#voter-list').prop('checked', false);
+    } else {
+        $('input[type="checkbox"]', '#voter-list').prop('checked', true);
+    }
+    $(this).toggleClass('allChecked');
+  })
+});
+  </script>
+</head>
+
+<body>
+  <div class="well well-lg head">Select the ELIGIBLE Voters' list for the Election <em>election_name</em></div><br><br>
+
+  
+  <div class="container">
+  
+  <p>Type something in the input field to search for the table </p>  
+  <input class="form-control" id="myInput" type="text" placeholder="Search..">
+  <br>
+
+  <table id="voter-list" class="table table-bordered table-striped">
+    <thead>
+      <tr>
+        <th><button type="button" id="selectAll" class="slctall link">Select All</button></th>
+        <th>Name</th>
+        <th>SID</th>
+        <th>Email</th>
+        <th>Phone Number</th>
+      </tr>
+    </thead>
+     <form action="">
+    <tbody id="myTable">
+      <!--below are sample inputs, actual inputs are to be taken from backend and displayed-->
+      <tr>
+        <td><input type="checkbox" name="voter[]" value="voter" ></td>
+        <td>John</td>
+        <td>15104040</td>
+        <td>john@example.com</td>
+        <td>9466798451</td>
+      </tr><br>
+      <tr>
+       <td> <input type="checkbox" name="voter[]" value="voter" ></td>
+        <td>Mary</td>
+        <td>17104087</td>
+        <td>mary@mail.com</td>
+        <td>9854758478</td>
+      </tr><br>
+      <tr>
+        <td><input type="checkbox" name="voter[]" value="voter" ></td>
+        <td>July</td>
+        <td>17104067</td>
+        <td>july@greatstuff.com</td>
+        <td>8547985261</td>
+      </tr><br>
+      <tr>
+        <td><input type="checkbox" name="voter[]" value="voter" ></td>
+        <td>Anja</td>
+        <td>16103089</td>
+        <td>a_r@test.com</td>
+        <td>8457984512</td>
+      </tr>
+    </tbody>
+    </form>
+  </table>
+</div>
+</body>
+</html>

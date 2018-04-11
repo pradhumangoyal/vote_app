@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<title>Online Polling System</title>
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <style>
+    .head{
+    font-size: 35px;
+    background-color: #1aa3ff;
+    color: white;
+    border: 3px solid black;
+  }
+
+  .cand_list{
+    font-size: 20px;
+    background-color: #0040ff;
+    color: white;
+    border: 3px solid black; 
+  }
+
+  /* Set a style for all buttons */
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+/* Add a hover effect for buttons */
+button:hover {
+    opacity: 0.8;
+}
+
+/* Extra style for the cancel button (red) */
+.cancelbtn {
+    width: auto;
+    padding: 10px 18px;
+    background-color: #f44336;
+}
+.link{
+  color: white;
+}
+
+.link:hover{
+  color: black;
+}
+
+
+  </style>
+
+  <script type="text/javascript">
+    
+  </script>
+</head>
+
+<body>
+  <div class="well well-lg head">WELCOME TO THE VOTING PORTAL</div><br><br>
+
+  <h1>Whom do you want to vote for , for the election <em>election_name?</em></h1>
+<br>
+<!--names of the candidate to be shown using javascript function specifying a loop there-->
+  <div class="well cand_list">
+    <form action="http://172.31.74.11:8000/castvote">
+    <input type="radio" name="candidate" value="abc"> candidate1<br>
+    <input type="radio" name="candidate" value="def"> candidate2<br>
+    <input type="radio" name="candidate" value="xyz"> candidate3
+    </form>
+  </div>
+
+  <button type="submit"><a href="" class="link"> Submit Vote</a></button>
+  <div class="container" style="background-color:#f1f1f1">
+    <button type="button" class="cancelbtn"><a href="" class="link">Cancel</a></button>
+  </div>
+
+</body>
+</html>
