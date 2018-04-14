@@ -56,29 +56,70 @@ button:hover {
 
   </style>
 
-  <script type="text/javascript">
+  <script >
+
+   function cast_vote(){
+    var xmlhttp, myObj, uId, txt = "";
+    uId = $('input[name=candidate]:checked').val();
+    console.log(uId);
+    xmlhttp = new XMLHttpRequest();
+    console.log("Hello");
+    xmlhttp.onreadystatechange = function() {
+        console.log(this.readyState)
+        if (this.readyState==4 && this.status != 200) {
+            alert(this.status)
+            alert("Either you have already voted or You are not allowed t vote for the particular election");
+        }
+
+    };
+    xmlhttp.open("POST", "/castvote");
+    xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+    var json = { "electionId" : '{{voterId}}' , "uId" : uId.toString(),"voterId": '{{voterId}}'};
+    console.log(json);
+    xmlhttp.send("data="+JSON.stringify(json));
+};
     
   </script>
 </head>
 
-<body>
+<body onload="change_myselect()">
   <div class="well well-lg head">WELCOME TO THE VOTING PORTAL</div><br><br>
 
-  <h1>Whom do you want to vote for , for the election <em>election_name?</em></h1>
+  <h1>Whom do you want to vote for , for the election <em>{{election_name}}?</em></h1>
 <br>
 <!--names of the candidate to be shown using javascript function specifying a loop there-->
   <div class="well cand_list">
-    <form action="http://172.31.74.11:8000/castvote">
-    <input type="radio" name="candidate" value="abc"> candidate1<br>
-    <input type="radio" name="candidate" value="def"> candidate2<br>
-    <input type="radio" name="candidate" value="xyz"> candidate3
-    </form>
+    <p id="dynam"></p>
   </div>
 
-  <button type="submit"><a href="" class="link"> Submit Vote</a></button>
+  <button type="submit" onclick="cast_vote()" id="castButton"><a href="" class="link"> Submit Vote</a></button>
   <div class="container" style="background-color:#f1f1f1">
     <button type="button" class="cancelbtn"><a href="" class="link">Cancel</a></button>
   </div>
 
+  <script type="text/javascript">
+    function change_myselect() {
+    var obj, dbParam, xmlhttp, myObj, x, txt = "";
+    xmlhttp = new XMLHttpRequest();
+    console.log("Hello");
+    xmlhttp.onreadystatechange = function() {
+        console.log(this.readyState)
+        if (this.readyState==4 && this.status == 200) {
+            //("Hi(this.responseText)");
+            myObj = JSON.parse(this.responseText);
+            console.log(myObj);
+            txt += "<form action='/castvote' method='POST'>\n"
+            for (x in myObj) {
+              txt += "<input type='radio' name='candidate' value=" + (myObj[x].uId).toString() +">" + myObj[x].name + " (" +(myObj[x].voterId).toString() + ") : " + myObj[x].manifesto +"<br>\n"
+            }
+            document.getElementById("dynam").innerHTML = txt;
+            console.log(txt)
+        }
+    };
+    xmlhttp.open("POST", "/get_list_candidate");
+    xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+    xmlhttp.send("electionId=" + '{{electionId}}');
+}
+  </script>
 </body>
 </html>

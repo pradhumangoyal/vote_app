@@ -1,5 +1,5 @@
 import string
-from flask import Flask, request, jsonify, send_from_directory, send_file, render_template
+from flask import Flask, request, jsonify, send_from_directory, send_file, render_template,abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import json
@@ -23,13 +23,6 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://onlinepolling:password@localhost/onlinepollingdb'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# app.config['MAIL_SERVER']='smtp.gmail.com'
-# app.config['MAIL_PORT'] = 465
-# app.config['MAIL_USERNAME'] = 'onlinepollingsys@gmail.com'
-# app.config['MAIL_PASSWORD'] = 'onlinepollingsystem'
-# app.config['MAIL_USE_TLS'] = False
-# app.config['MAIL_USE_SSL'] = True
-# app.config['Debug'] = True
 
 db = SQLAlchemy(app)
 
@@ -112,27 +105,7 @@ def send_email(electionId, voterId, otp):
     
     print(res.json())
 
-    # server = smtplib.SMTP_SSL('smtp.gmail.com',587)
-    # server.login(username,password)
-    # server.sendmail(
-    # 	fromaddr,toaddrs,message
-    # 	)
-    # server.quit()
-    # print('Sending mail')
-    # msg = Message(subject, sender = fromaddr, recipients = [toaddrs])
-    # msg.body = message
-    # print('Progress started')
-    # mail.send(msg)
-    # msg = EmailMessage()
-    # msg.set_content(message)
-    # msg['Subject'] = subject
-    # msg['From'] = fromaddr
-    # msg['To'] = toaddrs
-    # print('Generating SMTP')
-    # s = smtplib.SMTP('smtp.gmail.com:587')
-    # print('SMTP generated')
-    # s.send_message(msg)
-    # s.quit()
+   
 
 
 #*****************************************************#
@@ -144,15 +117,8 @@ def main_page():
 #*********************Voter Related API*****************************#
 
 #Get all the voters from the electoral roll
-@app.route('/voters', methods=['GET'])
+@app.route('/voters', methods=['GET','POST'])
 def getVoters():
-
-
-	# try:
-	# 	if request.headers['authKey'] != "pdh":
-	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	# except Exception as e:
-	# 	return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
 	voters = ElectoralRoll.query.all()
 	votersInfo = []
@@ -179,12 +145,6 @@ def getVoters():
 @app.route('/create/voter', methods=['POST'])
 def create_voter():
     
-	# try:
-	# 	if request.headers['authKey'] != "pdh":
-	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	# except Exception as e:
-	# 	return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
-
 	singleVoter = request.get_json()
 
 	if singleVoter == None:
@@ -238,79 +198,78 @@ def check_auth():
 
 		print("result otp ==> " + str(result))
 
+		try:
+			electionName = db.engine.execute("SELECT electionName FROM Elections where electionId = "+str(electionId)).fetchone()
+			electionName=electionName[0]
+		except Exception as e:
+			return render_template("/frontpage.html")
+
 		if result != otp:
 			return render_template("/frontpage.html")
-		return render_template("/cast_vote.html", electionId=electionId,otp=otp,voterId=voterId)
+		return render_template("/cast_vote.html",electionName=electionName,electionId=electionId,voterId=voterId)
 
 	return render_template("/voter_login.html")
 
 #***********Create a Elegible voter List and send Emails with otp for a particular electionId************#
 
-@app.route('/create/listvoters/<electionId>', methods=['POST'])
-def create_eligible_list(electionId):
-	# try:
-	# 	if request.headers['authKey'] != "pdh":
-	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	# except Exception as e:
-	# 	return jsonify({'ACK' : 'Not auth', 'Message' : 'Missing ' + e.args[0]})
+@app.route('/create/listvoters/', methods=['GET','POST'])
+def create_eligible_list():
+	
 
-	data = request.get_json()
+	
+	if request.method == 'POST':
+		
+		print(request.form)	
 
-	if data == None:
-		return jsonify({'ACK': 'FAILED'})
+		success = False
+		curr_session = db.session
 
-	success = False
-	curr_session = db.session
+		sendList = []
+		electionId = int(request.form["electionId"])
+		hostId = int(request.form["hostId"])
 
-	sendList = []
+		try:
+			for voterId in request.form["id"]:
+				listMember = {}
+				print("VoterId Recieved ==> " + str(voterId))	
+				otp = gen_otp()
 
-	print("data == > CREATE LIST")
-	print(data)
+				electionId = int(electionId)
+	            
+				voter = Voter(electionId = electionId, id = voterId, otp= otp)
+				
+				print("Printing == > ")
+				print("==> making Object")
 
-	try:
-		for voter in data:
-			listMember = {}
-			print("voter data == > CREATE LIST")
-			print(voter)
-			print("voter print end")
-			voterId = voter["voterId"]
-			print("VoterId Recieved ==> " + str(voterId))	
-			otp = gen_otp()
+				listMember["voterId"] = voterId
+				listMember["electionId"] = electionId
+				listMember["otp"] = otp 
 
-			electionId = int(electionId)
-            
-			voter = Voter(electionId = electionId, id = voterId, otp= otp)
-			
-			print("Printing == > ")
-			print("==> making Object")
+				curr_session.add(voter)
 
-			listMember["voterId"] = voterId
-			listMember["electionId"] = electionId
-			listMember["otp"] = otp 
+				print("==> Current session added")
+				sendList.append(listMember)
 
-			curr_session.add(voter)
+		except Exception as e:
+			return render_template("/frontpage.html")
 
-			print("==> Current session added")
-			sendList.append(listMember)
+		try:
+			curr_session.commit()
+			success = True
 
-	except Exception as e:
-		return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+			for eligibleVoter in sendList:
+				send_email(voterId=eligibleVoter["voterId"], electionId=eligibleVoter["electionId"], otp=eligibleVoter["otp"])
 
-	try:
-		curr_session.commit()
-		success = True
+		except Exception as err:
+			print(err)
+			curr_session.roll_back()
+			curr_session.flush()
 
-		for eligibleVoter in sendList:
-			send_email(voterId=eligibleVoter["voterId"], electionId=eligibleVoter["electionId"], otp=eligibleVoter["otp"])
+		if success:
+			return render_template("/cast_vote.html",electionName=electionName,electionId=electionId,voterId=hostId)
+		return render_template("/frontpage.html")
 
-	except Exception as err:
-		print(err)
-		curr_session.roll_back()
-		curr_session.flush()
-
-	if success:
-		return jsonify({'ACK': 'Success'})
-	return jsonify({'ACK': 'FAILED'})
+	return render_template("/frontpage.html")
 
 #***********Create Elections************#
 @app.route('/create/election', methods=['GET','POST'])
@@ -330,7 +289,7 @@ def create_election():
 				raise KeyError('Invalid hostId')
 
 		except KeyError as e:
-			return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+			return render_template("/host_election.html")
 
 		electionId = gen_electionId()
 		print("electionId ==> " + str(electionId) + "hostId ==> " + str(hostId) )
@@ -349,35 +308,47 @@ def create_election():
 			curr_session.flush()
 
 		if success:
-			return jsonify({'ACK': 'Success'})
-		return jsonify({'ACK': 'FAILED'})
+			return render_template("/elg_voter_list.html", electionName=electionName,description=description,startTime=startTime,endTime=endTime,hostId=hostId,electionId=electionId)
+
+		return render_template("/host_election.html")
 
 	return render_template("/host_election.html")
 
 #********Cast vote and get results***********#
 @app.route('/castvote', methods=['GET','POST'])
 def cast_vote():
+	print("Hello")
+	curr_session = db.session
+	success = False
 
-	if request.method == 'POST':
+	print(request.form)
 
-		curr_session = db.session
-		success = False
+	try:
+		print("Hello")
+		data = (request.form.to_dict())["data"]
+		print(data)
+		data = json.loads(data)
+		print("JSONIFY")
+		print(data)
+		uId = int(data["uId"].strip())
+		electionId = data["electionId"]
+		voterId = data["voterId"]
+		print(electionId)
+		print("HEllo")
+		vote = Vote.query.filter_by(uId=uId,electionId=electionId)
+		x = vote[0].count
+		vote[0].count = x + 1
+		result = db.engine.execute("DELETE from Voter where electionId="+str(electionId)+"AND voterId="+str(voterId))	
+		curr_session.commit()
+		success = True
+	except Exception as err:
+		print(err)
 
-		try:
-			uId = int(request.form['uId'].strip())
-			electionId = int(request.form['electionId'].strip())
-			vote = Vote.query.filter_by(uId=uId,electionId=electionId)
-			x = vote[0].count
-			vote[0].count = x + 1
-			result = db.engine.execute("delete from Voter where electionId="+str(electionId)+",name="+str(courseId))	
-			curr_session.commit()
-			success = True
-		except Exception as err:
-			print(err)
+	if success:
+		return render_template("/frontpage.html")
 
-		if success:
-			return jsonify({'ACK': 'Success'})
-		return jsonify({'ACK': 'FAILED'})
+	return render_template("/frontpage.html")
+
 
 #********Register as a candidate*******#
 @app.route('/register/candidate',methods=['GET','POST'])
@@ -393,7 +364,7 @@ def reg_candidate():
 				raise KeyError('Invalid hostId')
 
 		except KeyError as e:
-			return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
+			return render_template("/candidate_reg.html")
 
 		candidate = Candidate(voterId=voterId,electionId=electionId,name=name,manifesto=manifesto)
 
@@ -407,26 +378,22 @@ def reg_candidate():
 			uId = candidate.uId
 			print(uId)
 			result = db.engine.execute("INSERT INTO Vote (uId,electionId,count) VALUES (" + str(uId) + "," + str(electionId) + ", 0)") 
+			electionName = db.engine.execute("SELECT electionName FROM Elections where electionId = "+str(electionId)).fetchone()
+			electionName=electionName[0]
 			success = True
 		except Exception as err:
 			print(err)
 			
 
 		if success:
-			return jsonify({'ACK': 'Success'})
-		return jsonify({'ACK': 'FAILED'})
+			return render_template("/cast_vote.html",electionName=electionName,electionId=electionId,voterId=voterId)
+		render_template("/candidate_reg.html")
 
 	return render_template("/candidate_reg.html")
 
 #***********Get the results********#
 @app.route('/getresults/', methods=['GET', 'POST'])
 def fetch_results():
-
-	# try:
-	# 	if request.headers['authKey'] != "pdh":
-	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	# except Exception as e:
-	# 	return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
 	data = request.get_json()
 	if data == None:
@@ -470,11 +437,6 @@ def fetch_results():
 #**********Get list of elections***********#
 @app.route('/list/elections', methods=['GET', 'POST'])
 def get_listAll():
-	# try:
-	# 	if request.headers['authKey'] != "pdh":
-	# 		return jsonify({"ACK" : "AUTH NOT FOUND", "requestHeader": request.headers['authKey']})
-	# except Exception as e:
-	# 	return jsonify({'ACK' : 'FAILED', 'Message' : 'Missing ' + e.args[0]})
 
 	try:
 		#lists = db.session.query(Elections).order_by(Elections.electionId)
@@ -502,8 +464,41 @@ def get_listAll():
 	except Exception as e:
 		return jsonify({'ACK': 'FAILED'})
 
+@app.route('/get_list_candidate',methods=[ 'POST'])
+def get_list_candidate():
+	
+	try:
+		
+		#lists = db.session.query(Elections).order_by(Elections.electionId)
+		electionId = int(request.form["electionId"])
+		print("Reached here")
+		lists = db.engine.execute("SELECT * FROM Candidate where electionId="+str(electionId)).fetchall()
+		print("lists ==> ")
+		print(lists)
+
+		ret=[]
+		for election in lists:
+			print("Start")
+			add = {}
+			print("uId == >")
+			print(election[0])
+			add["uId"] = election[0]
+			add["voterId"] = election[2]
+			add["name"] = election[3]
+			add["manifesto"] = election[4]
+			print("here")
+			ret.append(add)
+			print("Done")
+		print(ret)
+
+		return jsonify(ret)
+		print("Here")
+	except Exception as e:
+		return jsonify({"ack ": "Failed"})
+
+	return jsonify(ret)
 
 
 if __name__ == '__main__':
 	db.create_all()
-	app.run(debug=False, host="172.31.74.11", port=8000, threaded=True)
+	app.run()

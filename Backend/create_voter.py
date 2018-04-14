@@ -30,9 +30,20 @@ import requests
 # print(res.json())
 
 #GET List elections
-res = requests.post('http://0.0.0.0:8080/list/elections', headers={"authKey": "pdh"} )
+# res = requests.post('http://0.0.0.0:8080/list/elections', headers={"authKey": "pdh"} )
+# print(res.json())
+
+res = requests.post('http://172.31.74.11:8000/voters')
+
 print(res.json())
 
+for singleRes in res.json():
+	print("<tr>"+'\n'+"<td><input type="+'"'+"checkbox"+'"'+ " name=" +'"' + "voter[]" + '"' +" value=" + '"' + "voter" +'"' +"></td>")
+	print("<td>" +singleRes["name"]+"</td>")
+	print("<td>" +str(singleRes["voterId"])+"</td>")
+	print("<td>" +singleRes["email"]+"</td>")
+	print("<td>" +str(singleRes["contact"])+"</td>")
+	print("</tr><br>")
 
 
 

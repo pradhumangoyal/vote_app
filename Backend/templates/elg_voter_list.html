@@ -41,6 +41,8 @@ button:hover {
   color: white;
 }
 
+
+
 .link:hover{
   color: black;
 }
@@ -68,11 +70,31 @@ button:hover {
     $(this).toggleClass('allChecked');
   })
 });
+    $(document).ready(function () {
+    $('#submitButton').click(function(){
+      //alert("Hello")
+        var values = new Array();
+       $.each($("input[name='voter[]']:checked"), function() {
+           
+           values.push($(this).val());             
+       });
+       //alert("Hi")
+       xmlhttp = new XMLHttpRequest();
+       xmlhttp.onreadystatechange = function() {
+       // alert("this.readyState")
+       };
+      xmlhttp.open("POST", "/create/listvoters/");
+      xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+      var json = { "id" : JSON.stringify(values), "electionId":'{{electionId}}',"hostId":'{{hostId}}'}
+      xmlhttp.send("data=" + JSON.stringify(json) );
+
+ }) });
   </script>
+  
 </head>
 
-<body>
-  <div class="well well-lg head">Select the ELIGIBLE Voters' list for the Election <em>election_name</em></div><br><br>
+<body onload="change_myselect()">
+  <div class="well well-lg head">Select the ELIGIBLE Voters' list for the Election <em>{{electionName}}</em></div><br><br>
 
   
   <div class="container">
@@ -80,51 +102,49 @@ button:hover {
   <p>Type something in the input field to search for the table </p>  
   <input class="form-control" id="myInput" type="text" placeholder="Search..">
   <br>
-
-  <table id="voter-list" class="table table-bordered table-striped">
-    <thead>
-      <tr>
-        <th><button type="button" id="selectAll" class="slctall link">Select All</button></th>
-        <th>Name</th>
-        <th>SID</th>
-        <th>Email</th>
-        <th>Phone Number</th>
-      </tr>
-    </thead>
-     <form action="">
-    <tbody id="myTable">
-      <!--below are sample inputs, actual inputs are to be taken from backend and displayed-->
-      <tr>
-        <td><input type="checkbox" name="voter[]" value="voter" ></td>
-        <td>John</td>
-        <td>15104040</td>
-        <td>john@example.com</td>
-        <td>9466798451</td>
-      </tr><br>
-      <tr>
-       <td> <input type="checkbox" name="voter[]" value="voter" ></td>
-        <td>Mary</td>
-        <td>17104087</td>
-        <td>mary@mail.com</td>
-        <td>9854758478</td>
-      </tr><br>
-      <tr>
-        <td><input type="checkbox" name="voter[]" value="voter" ></td>
-        <td>July</td>
-        <td>17104067</td>
-        <td>july@greatstuff.com</td>
-        <td>8547985261</td>
-      </tr><br>
-      <tr>
-        <td><input type="checkbox" name="voter[]" value="voter" ></td>
-        <td>Anja</td>
-        <td>16103089</td>
-        <td>a_r@test.com</td>
-        <td>8457984512</td>
-      </tr>
-    </tbody>
-    </form>
-  </table>
+  <p id="demo"> </p>
+</div> <br>
+<div class="container">
+  <button type="submit" id="submitButton"><a href="" class="link">Submit</a></button>
 </div>
+<script type="text/javascript">
+    function change_myselect() {
+    var obj, dbParam, xmlhttp, myObj, x, txt = "";
+    xmlhttp = new XMLHttpRequest();
+    console.log("Hello");
+    xmlhttp.onreadystatechange = function() {
+        console.log(this.readyState)
+        if (this.readyState==4 && this.status == 200) {
+            console.log(this.responseText);
+            myObj = JSON.parse(this.responseText);
+            console.log(myObj);
+            txt += "<table id='voter-list' class='table table-bordered table-striped'>\n";
+            txt+="<thead>\n";
+            txt+="<tr>\n";
+            txt+="<th><button type='button' id='selectAll' class='slctall link'>Select All</button></th>\n";
+            txt+="<th>Name</th>\n";
+            txt+="<th id='vId'>VoterID</th>\n";
+            txt+="<th>Email</th>\n";
+            txt+="<th>Phone Number</th>\n";
+            txt+="</tr>\n";
+            txt+="</thead>\n";
+            txt+="<form action='/create/listvoters' method='POST'>\n";
+            txt+="<tbody id='myTable'>\n";
+            for (x in myObj) {
+              txt+= "<tr><td><input type='checkbox' name='voter[]' value='"+(myObj[x].voterId).toString() +"' ></td>";
+              txt += "<td>" + myObj[x].name + "</td>";
+              txt += "<td>" + myObj[x].voterId + "</td>";
+              txt += "<td>" + myObj[x].email + "</td>";
+              txt += "<td>" + myObj[x].contact + "</td></tr>";
+            }
+            txt += "</tbody></form></table>";
+            document.getElementById("demo").innerHTML = txt;
+        }
+    };
+    xmlhttp.open("GET", "/voters");
+    xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+    xmlhttp.send();
+}
+  </script>
 </body>
 </html>

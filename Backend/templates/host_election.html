@@ -91,7 +91,7 @@ button:hover {
   <div class="well well-lg head">FILL IN THE ELECTION DETAILS</div>
 
   <!--election creation form-->
-  <form name="host_elec" action="http://172.31.74.11:8000/create/election" method="POST">
+  <form name="host_elec" action="/create/election" method="POST">
   
   <div class="container">
     <label for="electionName"><b>Election Title</b></label>
@@ -135,7 +135,7 @@ xhr.onreadystatechange = processRequest;
  
 function processRequest(e) {
     if (xhr.readyState == 4 && xhr.status == 200) {
-        alert(xhr.response.ip); // no parsing needed
+        //<!---alert(xhr.response.ip);--> // no parsing needed
     }
 }
 </script>
