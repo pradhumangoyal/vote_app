@@ -82,6 +82,9 @@ button:hover {
        xmlhttp = new XMLHttpRequest();
        xmlhttp.onreadystatechange = function() {
        // alert("this.readyState")
+       if (this.readyState==4 && this.status == 200) {
+          window.location = 'http://127.0.0.1:5000/'
+        }
        };
       xmlhttp.open("POST", "/create/listvoters/");
       xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');

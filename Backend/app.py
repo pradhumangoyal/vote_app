@@ -11,6 +11,7 @@ from flask_mail import Mail,  Message
 from email.message import EmailMessage
 from mailjet_rest import Client
 import os
+import time
 
 api_key =  "08654429a1ccf308410d2f91df61713e"
 api_secret = "6f82ebe2371ab441fbb694f8bca67708"
@@ -69,6 +70,40 @@ def check_valid_hostId(hostId):
 		return False
 	return True
 
+def getDisplay():
+	lists = db.engine.execute("SELECT * FROM Elections order by electionId").fetchall()
+	print("lists ==> ")
+	print(lists)
+
+	ret = ""
+	try:
+		for election in lists:
+			electionId = election[0]
+			electionName = election[2]
+			startTime = db.engine.execute("SELECT unix_timestamp(startTime) from Elections where electionId=" + str(electionId)).fetchone()
+			startTime = int(startTime[0])
+			endTime = db.engine.execute("SELECT UNIX_TIMESTAMP(endTime) from Elections where electionId=" + str(electionId)).fetchone()
+			endTime= int(endTime[0])
+			current = int(time.time())
+			print(startTime)
+			print(endTime)
+			print(current)
+			if not current>endTime: 
+				continue
+			result = db.engine.execute("SELECT uId from Vote where electionId="+str(electionId)+" ORDER BY count DESC LIMIT 1").fetchone()
+			result = result[0]
+			print(result)
+			winner = db.engine.execute("SELECT name , voterId from Candidate where uId="+str(result)).fetchone()
+			print(winner)
+			winnerId = winner[1]
+			winnerName = winner[0]
+			ret = ret + "The winner of " +  str(electionName) +" ( " + str(electionId) + " ) is " + str(winnerName) + " ( " + str(winnerId)+" )\n"
+			
+	except Exception as e:
+		return ret
+	
+	return ret
+
 def send_email(electionId, voterId, otp):
     fromaddr = "onilnepollingsys@gmail.com"
     toaddrs = db.session.query(ElectoralRoll.email).filter_by(voterId = voterId).first()
@@ -105,14 +140,15 @@ def send_email(electionId, voterId, otp):
     
     print(res.json())
 
-   
+
 
 
 #*****************************************************#
 
 @app.route('/')
 def main_page():
-	return render_template("/frontpage.html")
+	print("Reached here")
+	return render_template("/frontpage.html", display=getDisplay())
 	
 #*********************Voter Related API*****************************#
 
@@ -191,7 +227,7 @@ def check_auth():
 		otp = int(request.form["otp"].strip())
 		electionId = int(request.form["electionId"].strip())
 		voterId = int(request.form["voterId"].strip())
-
+		print("/auth ==> retrieved the electionid and voterid")
 		result = db.session.query(Voter.otp).filter_by(electionId=electionId,voterId=voterId).first()
 
 		result = result[0]
@@ -215,8 +251,6 @@ def check_auth():
 @app.route('/create/listvoters/', methods=['GET','POST'])
 def create_eligible_list():
 	
-
-	
 	if request.method == 'POST':
 		
 		print(request.form)	
@@ -225,11 +259,18 @@ def create_eligible_list():
 		curr_session = db.session
 
 		sendList = []
-		electionId = int(request.form["electionId"])
-		hostId = int(request.form["hostId"])
 
 		try:
-			for voterId in request.form["id"]:
+			data = (request.form.to_dict())["data"]
+			data = json.loads(data)
+			electionId = int(data["electionId"])
+			electionName = db.engine.execute("SELECT electionName FROM Elections where electionId = "+str(electionId)).fetchone()
+			electionName=electionName[0]
+			hostId = data["hostId"]
+			print(electionId)
+			print(hostId)
+			lst = json.loads(data["id"])
+			for voterId in lst:
 				listMember = {}
 				print("VoterId Recieved ==> " + str(voterId))	
 				otp = gen_otp()
@@ -266,7 +307,7 @@ def create_eligible_list():
 			curr_session.flush()
 
 		if success:
-			return render_template("/cast_vote.html",electionName=electionName,electionId=electionId,voterId=hostId)
+			return render_template("/frontpage.html")
 		return render_template("/frontpage.html")
 
 	return render_template("/frontpage.html")
@@ -282,11 +323,11 @@ def create_election():
 			startTime = request.form["startTime"].strip().replace('T', ' ')
 			endTime = request.form["endTime"].strip().replace('T',' ')
 			hostId = int(request.form["hostId"].strip())
-
-
-
+			print("/create/election ==>  going to check valid hostid.")
 			if not check_valid_hostId(hostId):
 				raise KeyError('Invalid hostId')
+
+			print("/create/election Valid hostid confirmed.")
 
 		except KeyError as e:
 			return render_template("/host_election.html")
@@ -335,10 +376,27 @@ def cast_vote():
 		voterId = data["voterId"]
 		print(electionId)
 		print("HEllo")
+		startTime = db.engine.execute("SELECT unix_timestamp(startTime) from Elections where electionId=" + str(electionId)).fetchone()
+		startTime = int(startTime[0])
+
+		endTime = db.engine.execute("SELECT UNIX_TIMESTAMP(endTime) from Elections where electionId=" + str(electionId)).fetchone()
+		endTime= int(endTime[0])
+
+		current = int(time.time())
+
+		print(startTime)
+		print(endTime)
+		print(current)
+
+		if current>endTime or current<startTime:
+			return render_template("/frontpage.html",display=getDisplay())
+
 		vote = Vote.query.filter_by(uId=uId,electionId=electionId)
 		x = vote[0].count
 		vote[0].count = x + 1
+		print("/castvote ==> deleting")
 		result = db.engine.execute("DELETE from Voter where electionId="+str(electionId)+"AND voterId="+str(voterId))	
+		print("/castvote ==> deleted")
 		curr_session.commit()
 		success = True
 	except Exception as err:
@@ -360,9 +418,11 @@ def reg_candidate():
 			electionId = int(request.form["electionId"].strip())
 			name = request.form["name"].strip()
 			manifesto = request.form["manifesto"].strip()
+			print("==> checking Valid ID")
 			if not check_valid_hostId(voterId):
 				raise KeyError('Invalid hostId')
 
+			print("==> Valid ID")
 		except KeyError as e:
 			return render_template("/candidate_reg.html")
 

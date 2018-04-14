@@ -70,11 +70,14 @@ button:hover {
             alert(this.status)
             alert("Either you have already voted or You are not allowed t vote for the particular election");
         }
+        if (this.readyState==4 && this.status == 200) {
+          window.location = 'http://127.0.0.1:5000/'
+        }
 
     };
     xmlhttp.open("POST", "/castvote");
     xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
-    var json = { "electionId" : '{{voterId}}' , "uId" : uId.toString(),"voterId": '{{voterId}}'};
+    var json = { "electionId" : '{{electionId}}' , "uId" : uId.toString(),"voterId": '{{voterId}}'};
     console.log(json);
     xmlhttp.send("data="+JSON.stringify(json));
 };
