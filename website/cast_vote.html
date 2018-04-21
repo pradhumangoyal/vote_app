@@ -8,31 +8,57 @@
 	<!-- <link href="https://fonts.googleapis.com/css?family=Droid+Sans" rel="stylesheet"> -->
 	
 	<!-- Animate.css -->
-	<link rel="stylesheet" href="css/animate.css">
+	<link rel="stylesheet" href="/static/css/animate.css">
 	<!-- Icomoon Icon Fonts-->
-	<link rel="stylesheet" href="css/icomoon.css">
+	<link rel="stylesheet" href="/static/css/icomoon.css">
 	<!-- Themify Icons-->
-	<link rel="stylesheet" href="css/themify-icons.css">
+	<link rel="stylesheet" href="/static/css/themify-icons.css">
 	<!-- Bootstrap  -->
-	<link rel="stylesheet" href="css/bootstrap.css">
+	<link rel="stylesheet" href="/static/css/bootstrap.css">
 
 	<!-- Magnific Popup -->
-	<link rel="stylesheet" href="css/magnific-popup.css">
+	<link rel="stylesheet" href="/static/css/magnific-popup.css">
 
 	<!-- Owl Carousel  -->
-	<link rel="stylesheet" href="css/owl.carousel.min.css">
-	<link rel="stylesheet" href="css/owl.theme.default.min.css">
+	<link rel="stylesheet" href="/static/css/owl.carousel.min.css">
+	<link rel="stylesheet" href="/static/css/owl.theme.default.min.css">
 
 	<!-- Theme style  -->
-	<link rel="stylesheet" href="css/style.css">
+	<link rel="stylesheet" href="/static/css/style.css">
 
 	<!-- Modernizr JS -->
-	<script src="js/modernizr-2.6.2.min.js"></script>
+	<script src="/static/js/modernizr-2.6.2.min.js"></script>
 	<!-- FOR IE9 below -->
 	<!--[if lt IE 9]>
 	<script src="js/respond.min.js"></script>
 	<![endif]-->
+	<script >
 
+   function cast_vote(){
+    var xmlhttp, myObj, uId, txt = "";
+    uId = $('input[name=candidate]:checked').val();
+    console.log(uId);
+    xmlhttp = new XMLHttpRequest();
+    console.log("Hello");
+    xmlhttp.onreadystatechange = function() {
+        console.log(this.readyState)
+        if (this.readyState==4 && this.status != 200) {
+            alert(this.status)
+            alert("Either you have already voted or You are not allowed t vote for the particular election");
+        }
+        if (this.readyState==4 && this.status == 200) {
+          window.location = 'http://127.0.0.1:5000/'
+        }
+
+    };
+    xmlhttp.open("POST", "/castvote");
+    xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+    var json = { "electionId" : '{{electionId}}' , "uId" : uId.toString(),"voterId": '{{voterId}}'};
+    console.log(json);
+    xmlhttp.send("data="+JSON.stringify(json));
+};
+    
+  </script>
 	</head>
 	<body>
 		
@@ -61,22 +87,18 @@
 		<div class="gtco-container">
 			<div class="row row-pb-md">
 				<div class="col-md-6 animate-box">
-				 <h3>Whom do you want to vote for , for the election <em>election_name?</em></h3>
-					<form name="voter_login" action="http://172.31.74.11:8000/castvote" method="post">
+				 <h3>Whom do you want to vote for , for the election <em>{{electionName}}?</em></h3>
+					
 						<div class="row form-group">
-							<div class="col-md-12">
-							     <input type="radio" name="candidate" value="abc"> candidate1<br>
-								<input type="radio" name="candidate" value="def"> candidate2<br>
-								<input type="radio" name="candidate" value="xyz"> candidate3
-							</div>
+							<p id="dynam"></p>
 							
 						</div>
 
 						<div class="form-group">
-							<input type="submit" value="Submit Vote" class="btn btn-primary btn-lg" href="cast_vote.html">
+							<button type="submit" onclick="cast_vote()" id="castButton"><a href="" class="link"> Submit Vote</a></button>
 						</div>
 
-					</form>		
+							
 				</div>
 				
 			</div>
@@ -94,22 +116,47 @@
 	</div>
 	
 	<!-- jQuery -->
-	<script src="js/jquery.min.js"></script>
+	<script src="/static/js/jquery.min.js"></script>
 	<!-- jQuery Easing -->
-	<script src="js/jquery.easing.1.3.js"></script>
+	<script src="/static/js/jquery.easing.1.3.js"></script>
 	<!-- Bootstrap -->
-	<script src="js/bootstrap.min.js"></script>
+	<script src="/static/js/bootstrap.min.js"></script>
 	<!-- Waypoints -->
-	<script src="js/jquery.waypoints.min.js"></script>
+	<script src="/static/js/jquery.waypoints.min.js"></script>
 	<!-- Carousel -->
-	<script src="js/owl.carousel.min.js"></script>
+	<script src="/static/js/owl.carousel.min.js"></script>
 	<!-- countTo -->
-	<script src="js/jquery.countTo.js"></script>
+	<script src="/static/js/jquery.countTo.js"></script>
 	<!-- Magnific Popup -->
-	<script src="js/jquery.magnific-popup.min.js"></script>
-	<script src="js/magnific-popup-options.js"></script>
+	<script src="/static/js/jquery.magnific-popup.min.js"></script>
+	<script src="/static/js/magnific-popup-options.js"></script>
 	<!-- Main -->
-	<script src="js/main.js"></script>
+	<script src="/static/js/main.js"></script>
+
+	 <script type="text/javascript">
+    function change_myselect() {
+    var obj, dbParam, xmlhttp, myObj, x, txt = "";
+    xmlhttp = new XMLHttpRequest();
+    console.log("Hello");
+    xmlhttp.onreadystatechange = function() {
+        console.log(this.readyState)
+        if (this.readyState==4 && this.status == 200) {
+            //("Hi(this.responseText)");
+            myObj = JSON.parse(this.responseText);
+            console.log(myObj);
+            txt += "<form action='/castvote' method='POST'>\n"
+            for (x in myObj) {
+              txt += "<input type='radio' name='candidate' value=" + (myObj[x].uId).toString() +">" + myObj[x].name + " (" +(myObj[x].voterId).toString() + ") : " + myObj[x].manifesto +"<br>\n"
+            }
+            document.getElementById("dynam").innerHTML = txt;
+            console.log(txt)
+        }
+    };
+    xmlhttp.open("POST", "/get_list_candidate");
+    xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+    xmlhttp.send("electionId=" + '{{electionId}}');
+}
+  </script>
 
 	</body>
 </html>

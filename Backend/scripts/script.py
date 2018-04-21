@@ -61,10 +61,10 @@ for rownumber in range(1, sheet.nrows):
   else:
     	branch = temp_branch
 
-  r = requests.post('http://0.0.0.0:8080/create/voter', json={
+  r = requests.post('http://127.0.0.1:5000/create/voter', json={
   		"voterId": voterid,
   		"email": email,
-  		"contact": str(contact),
+  		"contact": contact,
   		"branch": branch,
   		"year": year,
   		"name": name}, headers={"authKey": "pdh"})

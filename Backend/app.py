@@ -11,6 +11,7 @@ from flask_mail import Mail,  Message
 from email.message import EmailMessage
 from mailjet_rest import Client
 import os
+import threading
 import time
 
 api_key =  "08654429a1ccf308410d2f91df61713e"
@@ -24,6 +25,7 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://onlinepolling:password@localhost/onlinepollingdb'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app._static_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 db = SQLAlchemy(app)
 
@@ -77,8 +79,13 @@ def getDisplay():
 
 	ret = ""
 	try:
-		for election in lists:
+		for i in range(0,len(lists)):
+			print("i==> " +str(i) + " lists[i] == "  )
+			print(lists[i]	)
+			election = lists[i]
+			print("ElectionId==>")
 			electionId = election[0]
+			print(electionId)
 			electionName = election[2]
 			startTime = db.engine.execute("SELECT unix_timestamp(startTime) from Elections where electionId=" + str(electionId)).fetchone()
 			startTime = int(startTime[0])
@@ -88,20 +95,31 @@ def getDisplay():
 			print(startTime)
 			print(endTime)
 			print(current)
+			print("IF CONDN")
 			if not current>endTime: 
+				print("Inside if")
 				continue
+			print("Outside")
 			result = db.engine.execute("SELECT uId from Vote where electionId="+str(electionId)+" ORDER BY count DESC LIMIT 1").fetchone()
+			if not result:
+				continue
 			result = result[0]
+
 			print(result)
 			winner = db.engine.execute("SELECT name , voterId from Candidate where uId="+str(result)).fetchone()
 			print(winner)
 			winnerId = winner[1]
 			winnerName = winner[0]
-			ret = ret + "The winner of " +  str(electionName) +" ( " + str(electionId) + " ) is " + str(winnerName) + " ( " + str(winnerId)+" )\n"
+			ret = ret + "The winner of " +  str(electionName) +" ( " + str(electionId) + " ) is " + str(winnerName) + " ( " + str(winnerId)+" ) \n"
+			print("end reached")
 			
 	except Exception as e:
+		print("Exception Handle")
+		print(e)
 		return ret
-	
+
+	print("No Exception")
+	ret = ret.split('\n')
 	return ret
 
 def send_email(electionId, voterId, otp):
@@ -148,7 +166,7 @@ def send_email(electionId, voterId, otp):
 @app.route('/')
 def main_page():
 	print("Reached here")
-	return render_template("/frontpage.html", display=getDisplay())
+	return render_template("/frontpage.html", display=getDisplay(),alert="")
 	
 #*********************Voter Related API*****************************#
 
@@ -223,25 +241,27 @@ def create_voter():
 
 @app.route('/auth', methods=['GET','POST'])
 def check_auth():
+	print("Reached==> /auth")
 	if request.method == 'POST':
-		otp = int(request.form["otp"].strip())
-		electionId = int(request.form["electionId"].strip())
-		voterId = int(request.form["voterId"].strip())
-		print("/auth ==> retrieved the electionid and voterid")
-		result = db.session.query(Voter.otp).filter_by(electionId=electionId,voterId=voterId).first()
-
-		result = result[0]
-
-		print("result otp ==> " + str(result))
-
 		try:
+			otp = int(request.form["otp"].strip())
+			electionId = int(request.form["electionId"].strip())
+			voterId = int(request.form["voterId"].strip())
+			print("/auth ==> retrieved the electionid and voterid")
+			result = db.session.query(Voter.otp).filter_by(electionId=electionId,voterId=voterId).first()
+			print("result==>")
+			print(result)
+			result = result[0]
+
+			print("result otp ==> " + str(result))
+
 			electionName = db.engine.execute("SELECT electionName FROM Elections where electionId = "+str(electionId)).fetchone()
 			electionName=electionName[0]
 		except Exception as e:
-			return render_template("/frontpage.html")
+			return render_template("/frontpage.html",display=getDisplay(),alert="Error in Authenticating.")
 
 		if result != otp:
-			return render_template("/frontpage.html")
+			return render_template("/frontpage.html",display=getDisplay(),alert="Wrong OTP entered.")
 		return render_template("/cast_vote.html",electionName=electionName,electionId=electionId,voterId=voterId)
 
 	return render_template("/voter_login.html")
@@ -292,14 +312,14 @@ def create_eligible_list():
 				sendList.append(listMember)
 
 		except Exception as e:
-			return render_template("/frontpage.html")
+			return render_template("/frontpage.html",display=getDisplay(),alert="Error in creating the List of eligible voters.")
 
 		try:
 			curr_session.commit()
 			success = True
 
 			for eligibleVoter in sendList:
-				send_email(voterId=eligibleVoter["voterId"], electionId=eligibleVoter["electionId"], otp=eligibleVoter["otp"])
+				send_email(electionId=eligibleVoter["electionId"], voterId=eligibleVoter["voterId"], otp=eligibleVoter["otp"])
 
 		except Exception as err:
 			print(err)
@@ -307,10 +327,9 @@ def create_eligible_list():
 			curr_session.flush()
 
 		if success:
-			return render_template("/frontpage.html")
-		return render_template("/frontpage.html")
-
-	return render_template("/frontpage.html")
+			return render_template("/frontpage.html",display=getDisplay(),alert="Successfully Hosted the election")
+		return render_template("/frontpage.html",display=getDisplay(),alert="Error in hosting the election")
+	return render_template("/frontpage.html",display=getDisplay(),alert="Method Not allowed.")
 
 #***********Create Elections************#
 @app.route('/create/election', methods=['GET','POST'])
@@ -389,7 +408,7 @@ def cast_vote():
 		print(current)
 
 		if current>endTime or current<startTime:
-			return render_template("/frontpage.html",display=getDisplay())
+			return render_template("/frontpage.html",display=getDisplay(),alert="The Elecion has not started yet or has been finished.")
 
 		vote = Vote.query.filter_by(uId=uId,electionId=electionId)
 		x = vote[0].count
@@ -403,20 +422,24 @@ def cast_vote():
 		print(err)
 
 	if success:
-		return render_template("/frontpage.html")
+		return render_template("/frontpage.html",alert="Successfully casted vote!!")
 
-	return render_template("/frontpage.html")
+	return render_template("/frontpage.html",alert="Error in Casting the vote.")
 
 
 #********Register as a candidate*******#
 @app.route('/register/candidate',methods=['GET','POST'])
 def reg_candidate():
-
+	print("Inside candidate registeration")
 	if request.method == 'POST':		
 		try:
+			print("Here")
 			voterId = int(request.form["voterId"].strip())
+			print("Here2")
 			electionId = int(request.form["electionId"].strip())
+			print("Here3")
 			name = request.form["name"].strip()
+			print("Here4")
 			manifesto = request.form["manifesto"].strip()
 			print("==> checking Valid ID")
 			if not check_valid_hostId(voterId):
@@ -446,7 +469,7 @@ def reg_candidate():
 			
 
 		if success:
-			return render_template("/cast_vote.html",electionName=electionName,electionId=electionId,voterId=voterId)
+			return render_template("/frontpage.html",display=getDisplay(),alert="Successfully Registered.")
 		render_template("/candidate_reg.html")
 
 	return render_template("/candidate_reg.html")
@@ -561,4 +584,4 @@ def get_list_candidate():
 
 if __name__ == '__main__':
 	db.create_all()
-	app.run()
+	app.run(host='172.31.74.11',port=8000,threaded=True)

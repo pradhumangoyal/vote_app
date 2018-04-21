@@ -1,61 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE HTML>
 
-<head>
-<title>Online Polling System</title>
-<meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-  <style>
-    .head{
-    font-size: 35px;
-    background-color: #1aa3ff;
-    color: white;
-    border: 3px solid black;
-  }
+<html>
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  
+  <!-- <link href="https://fonts.googleapis.com/css?family=Droid+Sans" rel="stylesheet"> -->
+  
+  <!-- Animate.css -->
+  <link rel="stylesheet" href="/static/css/animate.css">
+  <!-- Icomoon Icon Fonts-->
+  <link rel="stylesheet" href="/static/css/icomoon.css">
+  <!-- Themify Icons-->
+  <link rel="stylesheet" href="/static/css/themify-icons.css">
+  <!-- Bootstrap  -->
+  <link rel="stylesheet" href="/static/css/bootstrap.css">
 
-  .cand_list{
-    font-size: 20px;
-    background-color: #0040ff;
-    color: white;
-    border: 3px solid black; 
-  }
+  <!-- Magnific Popup -->
+  <link rel="stylesheet" href="/static/css/magnific-popup.css">
 
-  /* Set a style for all buttons */
-button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 14px 20px;
-    margin: 8px 0;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-}
+  <!-- Owl Carousel  -->
+  <link rel="stylesheet" href="/static/css/owl.carousel.min.css">
+  <link rel="stylesheet" href="/static/css/owl.theme.default.min.css">
 
-/* Add a hover effect for buttons */
-button:hover {
-    opacity: 0.8;
-}
+  <!-- Theme style  -->
+  <link rel="stylesheet" href="/static/css/style.css">
 
-/* Extra style for the cancel button (red) */
-.cancelbtn {
-    width: auto;
-    padding: 10px 18px;
-    background-color: #f44336;
-}
-.link{
-  color: white;
-}
-
-.link:hover{
-  color: black;
-}
-
-
-  </style>
-
+  <!-- Modernizr JS -->
+  <script src="/static/js/modernizr-2.6.2.min.js"></script>
+  <!-- FOR IE9 below -->
+  <!--[if lt IE 9]>
+  <script src="js/respond.min.js"></script>
+  <![endif]-->
   <script >
 
    function cast_vote(){
@@ -68,14 +44,14 @@ button:hover {
         console.log(this.readyState)
         if (this.readyState==4 && this.status != 200) {
             alert(this.status)
-            alert("Either you have already voted or You are not allowed t vote for the particular election");
+            alert("Either you have already voted or you are not allowed to vote for the particular election");
         }
         if (this.readyState==4 && this.status == 200) {
-          window.location = 'http://127.0.0.1:5000/'
+          window.location = 'http://172.31.74.11:8000/'
         }
 
     };
-    xmlhttp.open("POST", "/castvote");
+    xmlhttp.open("POST", "http://172.31.74.11:8000/castvote");
     xmlhttp.setRequestHeader('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
     var json = { "electionId" : '{{electionId}}' , "uId" : uId.toString(),"voterId": '{{voterId}}'};
     console.log(json);
@@ -83,24 +59,81 @@ button:hover {
 };
     
   </script>
-</head>
+  </head>
+  <body onload="change_myselect()">
+    
+  <div class="gtco-loader"></div>
+  
+  <div id="page">
+  
 
-<body onload="change_myselect()">
-  <div class="well well-lg head">WELCOME TO THE VOTING PORTAL</div><br><br>
+  <header id="gtco-header" class="gtco-cover gtco-cover-xs" role="banner" style="background-image:url(images/img_bg_1.jpg);">
+    <div class="overlay"></div>
+    <div class="gtco-container">
+      <div class="row">
+        <div class="col-md-8 col-md-offset-2 text-center">
+          <div class="display-t">
+            <div class="display-tc">
+              <h1 class="animate-box" data-animate-effect="fadeInUp">Cast Vote</h1>
+              
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+  
+  <div class="gtco-section">
+    <div class="gtco-container">
+      <div class="row row-pb-md">
+        <div class="col-md-6 animate-box">
+         <h3>Whom do you want to vote for , for the election <em>{{electionName}}?</em></h3>
+          
+            <div class="row form-group">
+              <p id="dynam"></p>
+              
+            </div>
 
-  <h1>Whom do you want to vote for , for the election <em>{{election_name}}?</em></h1>
-<br>
-<!--names of the candidate to be shown using javascript function specifying a loop there-->
-  <div class="well cand_list">
-    <p id="dynam"></p>
+            <div class="form-group">
+              <button type="submit" onclick="cast_vote()" id="castButton"><a href="" class="link"> Submit Vote</a></button>
+            </div>
+
+              
+        </div>
+        
+      </div>
+      </div>
+      
+    </div>
   </div>
 
-  <button type="submit" onclick="cast_vote()" id="castButton"><a href="" class="link"> Submit Vote</a></button>
-  <div class="container" style="background-color:#f1f1f1">
-    <button type="button" class="cancelbtn"><a href="" class="link">Cancel</a></button>
+
+
   </div>
 
-  <script type="text/javascript">
+  <div class="gototop js-top">
+    <a href="#" class="js-gotop"><i class="icon-arrow-up"></i></a>
+  </div>
+  
+  <!-- jQuery -->
+  <script src="/static/js/jquery.min.js"></script>
+  <!-- jQuery Easing -->
+  <script src="/static/js/jquery.easing.1.3.js"></script>
+  <!-- Bootstrap -->
+  <script src="/static/js/bootstrap.min.js"></script>
+  <!-- Waypoints -->
+  <script src="/static/js/jquery.waypoints.min.js"></script>
+  <!-- Carousel -->
+  <script src="/static/js/owl.carousel.min.js"></script>
+  <!-- countTo -->
+  <script src="/static/js/jquery.countTo.js"></script>
+  <!-- Magnific Popup -->
+  <script src="/static/js/jquery.magnific-popup.min.js"></script>
+  <script src="/static/js/magnific-popup-options.js"></script>
+  <!-- Main -->
+  <script src="/static/js/main.js"></script>
+
+   <script type="text/javascript">
     function change_myselect() {
     var obj, dbParam, xmlhttp, myObj, x, txt = "";
     xmlhttp = new XMLHttpRequest();
@@ -124,5 +157,7 @@ button:hover {
     xmlhttp.send("electionId=" + '{{electionId}}');
 }
   </script>
-</body>
+
+  </body>
 </html>
+
